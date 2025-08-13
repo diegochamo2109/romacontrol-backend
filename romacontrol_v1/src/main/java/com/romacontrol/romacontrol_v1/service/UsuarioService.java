@@ -2,6 +2,8 @@ package com.romacontrol.romacontrol_v1.service;
 
 import java.time.OffsetDateTime;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -15,6 +17,7 @@ import com.romacontrol.romacontrol_v1.model.ContactoUrgencia;
 import com.romacontrol.romacontrol_v1.model.Genero;
 import com.romacontrol.romacontrol_v1.model.Localidad;
 import com.romacontrol.romacontrol_v1.model.Persona;
+import com.romacontrol.romacontrol_v1.model.Rol;
 import com.romacontrol.romacontrol_v1.model.TipoCuota;
 import com.romacontrol.romacontrol_v1.model.Usuario;
 import com.romacontrol.romacontrol_v1.repository.ContactoUrgenciaRepository;
@@ -43,10 +46,12 @@ public class UsuarioService {
   @Transactional
   public UsuarioResponse crear(UsuarioCreateRequest req, Long creadoPorId) {
 
+    // 1) Unicidad de DNI
     if (usuarioRepo.existsByDni(req.dni())) {
       throw new ConflictException("El DNI ya existe: " + req.dni());
     }
 
+    // 2) Catálogos
     Genero genero = generoRepo.findById(req.persona().generoId())
         .orElseThrow(() -> new NotFoundException("Género no encontrado"));
 
@@ -59,6 +64,7 @@ public class UsuarioService {
     TipoCuota tipoCuota = tipoCuotaRepo.findById(req.tipoCuotaId())
         .orElseThrow(() -> new NotFoundException("Tipo de cuota no encontrado"));
 
+    // 3) Persona
     Persona persona = Persona.builder()
         .nombre(req.persona().nombre())
         .apellido(req.persona().apellido())
@@ -71,20 +77,40 @@ public class UsuarioService {
         .localidad(locPersona)
         .build();
 
+    // 4) Roles (si se envían)
+    Set<Rol> roles = new HashSet<>();
+    List<Long> rolIds = req.rolIds();
+    if (rolIds != null && !rolIds.isEmpty()) {
+      List<Rol> encontrados = rolRepo.findAllById(rolIds);
+      if (encontrados.size() != rolIds.size()) {
+        throw new NotFoundException("Uno o más roles no existen");
+      }
+      roles.addAll(encontrados);
+    }
+
+    // 5) Usuario (PIN en BCrypt)
     Usuario usuario = Usuario.builder()
         .dni(req.dni())
-        .pin(passwordEncoder.encode(req.pin()))
-        .persona(persona)               // se persiste por CascadeType.ALL en Usuario.persona
+        .pin(passwordEncoder.encode(req.pin()))    // <----- BCrypt aquí
+        .persona(persona)                          // se persiste por CascadeType.ALL
         .activo(true)
         .tipoCuota(tipoCuota)
         .fechaCreacion(OffsetDateTime.now())
-        .roles(new HashSet<>(rolRepo.findAllById(req.rolIds())))
+        .roles(roles)
         .build();
 
+    // estado ACTIVO si existe
     estadoUsuarioRepo.findByNombre("ACTIVO").ifPresent(usuario::setEstadoUsuario);
 
+    // creadoPor (opcional)
+    if (creadoPorId != null) {
+      usuarioRepo.findById(creadoPorId).ifPresent(usuario::setCreadoPor);
+    }
+
+    // 6) Persistir usuario (cascade persiste persona)
     Usuario saved = usuarioRepo.save(usuario);
 
+    // 7) Contacto de Urgencia
     ContactoUrgencia contacto = ContactoUrgencia.builder()
         .nombre(req.contacto().nombre())
         .apellido(req.contacto().apellido())
@@ -97,9 +123,12 @@ public class UsuarioService {
 
     contactoRepo.save(contacto);
 
-    return new UsuarioResponse(saved.getId(),
+    // 8) Respuesta
+    return new UsuarioResponse(
+        saved.getId(),
         saved.getDni(),
         saved.getPersona().getNombre(),
-        saved.getPersona().getApellido());
+        saved.getPersona().getApellido()
+    );
   }
 }
