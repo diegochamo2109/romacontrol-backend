@@ -1,5 +1,7 @@
 package com.romacontrol.romacontrol_v1.web;
 
+import java.net.URI;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -25,22 +27,25 @@ public class UsuarioController {
   private final UsuarioService usuarioService;
   private final UsuarioRepository usuarioRepository;
 
-  @PostMapping
+  @PostMapping(consumes = "application/json", produces = "application/json")
   public ResponseEntity<UsuarioResponse> crear(@Valid @RequestBody UsuarioCreateRequest request,
                                                Authentication auth) {
     if (auth == null) {
       throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No autenticado");
     }
 
-    // En tu login usás UsernamePasswordAuthenticationToken(dni, pin),
-    // por lo que auth.getName() devuelve el DNI.
-    String dniActual = auth.getName();
+    // auth.getName() = DNI (porque autenticás con UsernamePasswordAuthenticationToken(dni, pin))
+    String dniActual = auth.getName() == null ? "" : auth.getName().trim();
 
     Long creadorId = usuarioRepository.findIdByDni(dniActual)
         .orElseThrow(() -> new ResponseStatusException(
-            HttpStatus.UNAUTHORIZED, "Usuario autenticado no encontrado"));
+            HttpStatus.UNAUTHORIZED, "Usuario autenticado no encontrado: " + dniActual));
 
-    var resp = usuarioService.crear(request, creadorId);
-    return ResponseEntity.ok(resp);
+    UsuarioResponse resp = usuarioService.crear(request, creadorId);
+
+    // 201 Created + Location: /api/usuarios/{id}
+    return ResponseEntity
+        .created(URI.create("/api/usuarios/" + resp.id()))
+        .body(resp);
   }
 }

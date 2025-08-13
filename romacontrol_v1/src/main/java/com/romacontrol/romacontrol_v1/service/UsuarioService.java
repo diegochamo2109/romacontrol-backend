@@ -28,6 +28,7 @@ import com.romacontrol.romacontrol_v1.repository.RolRepository;
 import com.romacontrol.romacontrol_v1.repository.TipoCuotaRepository;
 import com.romacontrol.romacontrol_v1.repository.UsuarioRepository;
 
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -45,10 +46,13 @@ public class UsuarioService {
 
   @Transactional
   public UsuarioResponse crear(UsuarioCreateRequest req, Long creadoPorId) {
+    // Normaliza DNI y PIN
+    final String dni = req.dni().trim();
+    final String pinPlano = req.pin().trim();
 
     // 1) Unicidad de DNI
-    if (usuarioRepo.existsByDni(req.dni())) {
-      throw new ConflictException("El DNI ya existe: " + req.dni());
+    if (usuarioRepo.existsByDni(dni)) {
+      throw new ConflictException("El DNI ya existe: " + dni);
     }
 
     // 2) Catálogos
@@ -90,9 +94,9 @@ public class UsuarioService {
 
     // 5) Usuario (PIN en BCrypt)
     Usuario usuario = Usuario.builder()
-        .dni(req.dni())
-        .pin(passwordEncoder.encode(req.pin()))    // <----- BCrypt aquí
-        .persona(persona)                          // se persiste por CascadeType.ALL
+        .dni(dni)
+        .pin(passwordEncoder.encode(pinPlano))   // BCrypt
+        .persona(persona)                        // se persiste por CascadeType.ALL
         .activo(true)
         .tipoCuota(tipoCuota)
         .fechaCreacion(OffsetDateTime.now())
@@ -102,9 +106,14 @@ public class UsuarioService {
     // estado ACTIVO si existe
     estadoUsuarioRepo.findByNombre("ACTIVO").ifPresent(usuario::setEstadoUsuario);
 
-    // creadoPor (opcional)
+    // creadoPor (opcional, con referencia perezosa)
     if (creadoPorId != null) {
-      usuarioRepo.findById(creadoPorId).ifPresent(usuario::setCreadoPor);
+      try {
+        var creadorRef = usuarioRepo.getReferenceById(creadoPorId);
+        usuario.setCreadoPor(creadorRef);
+      } catch (EntityNotFoundException ex) {
+        throw new NotFoundException("Usuario creador no existe (id=" + creadoPorId + ")");
+      }
     }
 
     // 6) Persistir usuario (cascade persiste persona)
