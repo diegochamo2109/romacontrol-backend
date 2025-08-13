@@ -1,17 +1,23 @@
 package com.romacontrol.romacontrol_v1.web;
 
 import java.net.URI;
+import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.romacontrol.romacontrol_v1.dto.UsuarioCreateRequest;
+import com.romacontrol.romacontrol_v1.dto.UsuarioDetailResponse;
+import com.romacontrol.romacontrol_v1.dto.UsuarioListItem;
 import com.romacontrol.romacontrol_v1.dto.UsuarioResponse;
 import com.romacontrol.romacontrol_v1.repository.UsuarioRepository;
 import com.romacontrol.romacontrol_v1.service.UsuarioService;
@@ -27,6 +33,16 @@ public class UsuarioController {
   private final UsuarioService usuarioService;
   private final UsuarioRepository usuarioRepository;
 
+  @GetMapping(produces = "application/json")
+  public List<UsuarioListItem> listar(@RequestParam(value = "activo", required = false) Boolean activo) {
+    return usuarioService.listar(activo);
+  }
+
+  @GetMapping(value = "/{id}", produces = "application/json")
+  public UsuarioDetailResponse detalle(@PathVariable Long id) {
+    return usuarioService.detalle(id);
+  }
+
   @PostMapping(consumes = "application/json", produces = "application/json")
   public ResponseEntity<UsuarioResponse> crear(@Valid @RequestBody UsuarioCreateRequest request,
                                                Authentication auth) {
@@ -34,7 +50,6 @@ public class UsuarioController {
       throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No autenticado");
     }
 
-    // auth.getName() = DNI (porque autenticás con UsernamePasswordAuthenticationToken(dni, pin))
     String dniActual = auth.getName() == null ? "" : auth.getName().trim();
 
     Long creadorId = usuarioRepository.findIdByDni(dniActual)
@@ -43,7 +58,6 @@ public class UsuarioController {
 
     UsuarioResponse resp = usuarioService.crear(request, creadorId);
 
-    // 201 Created + Location: /api/usuarios/{id}
     return ResponseEntity
         .created(URI.create("/api/usuarios/" + resp.id()))
         .body(resp);

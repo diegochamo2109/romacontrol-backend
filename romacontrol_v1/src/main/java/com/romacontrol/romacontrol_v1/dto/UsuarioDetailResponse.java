@@ -9,59 +9,38 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/** Detalle completo para pantalla de edición */
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
+@Data @Builder @NoArgsConstructor @AllArgsConstructor
 public class UsuarioDetailResponse {
   private Long id;
   private String dni;
   private boolean activo;
   private OffsetDateTime fechaCreacion;
-
-  private Long creadoPorId;
-  private String creadoPorDni;
-
-  private PersonaDTO persona;
-  private ContactoUrgenciaDTO contacto;
-
-  private List<String> roles;   // nombres (ej. "ROLE_ADMIN")
-  private List<Long> rolIds;    // ids seleccionados
-
   private Long tipoCuotaId;
-  private String tipoCuotaNombre;
 
-  // ----------------- Sub-DTOs -----------------
-  @Data
-  @Builder
-  @NoArgsConstructor
-  @AllArgsConstructor
-  public static class PersonaDTO {
-    private String nombre;
-    private String apellido;
-    private LocalDate fechaNacimiento;
-    private String domicilio;
-    private String telefonoArea;
-    private String telefonoNumero;
-    private String email;
-    private Long generoId;
-    private String generoNombre;
-    private Long localidadId;
-    private String localidadNombre;
-  }
+  // Persona
+  private String nombre;
+  private String apellido;
+  private LocalDate fechaNacimiento;
+  private String domicilio;
+  private String telefonoArea;
+  private String telefonoNumero;
+  private String email;
+  private Long generoId;
+  private String generoNombre;     // ✅ nombre legible (Femenino/Masculino/etc.)
+  private Long localidadId;
 
-  @Data
-  @Builder
-  @NoArgsConstructor
-  @AllArgsConstructor
-  public static class ContactoUrgenciaDTO {
-    private String nombre;
-    private String apellido;
-    private String telefonoArea;
-    private String telefonoNumero;
-    private String relacion;
-    private Long localidadId;
-    private String localidadNombre;
-  }
+  // Contacto de urgencia (si existe)
+  private String contactoNombre;
+  private String contactoApellido;
+  private String contactoTelefonoArea;
+  private String contactoTelefonoNumero;
+  private String contactoRelacion;
+
+  // Roles
+  private List<Long> rolIds;
+
+  // Creador (si existe)
+  private Long creadoPorId;
+  private String creadoPorNombre;  // "Apellido, Nombre"
+  private String creadoPorDni;
 }
