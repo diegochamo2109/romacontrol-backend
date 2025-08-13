@@ -1,6 +1,7 @@
 // web/AuthController.java
 package com.romacontrol.romacontrol_v1.web;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -19,6 +20,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.romacontrol.romacontrol_v1.repository.UsuarioRepository;  // <-- NUEVO
+
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.AllArgsConstructor;
@@ -33,6 +36,7 @@ public class AuthController {
 
   private final AuthenticationManager authManager;
   private final SecurityContextRepository securityContextRepository;
+  private final UsuarioRepository usuarioRepo; // <-- NUEVO
 
   @PostMapping("/login")
   public LoginResponse login(@RequestBody LoginRequest req,
@@ -69,13 +73,44 @@ public class AuthController {
     if (auth == null) {
       throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No autenticado");
     }
-    return Map.of(
-        "name", auth.getName(),
-        "roles", auth.getAuthorities()
-                      .stream()
-                      .map(GrantedAuthority::getAuthority)
-                      .collect(Collectors.toList())
-    );
+
+    // DNI del usuario (auth.getName())
+    String dni = auth.getName();
+
+    // Intentamos enriquecer con nombre y apellido (si existen)
+    String nombre = null;
+    String apellido = null;
+    try {
+      var uOpt = usuarioRepo.findByDni(dni);
+      if (uOpt.isPresent() && uOpt.get().getPersona() != null) {
+        var p = uOpt.get().getPersona();
+        nombre = p.getNombre();
+        apellido = p.getApellido();
+      }
+    } catch (Exception ignored) {
+      // No rompemos nada si no hay persona
+    }
+
+    // Authorities completas (como venías usando)
+    var authorities = auth.getAuthorities()
+        .stream()
+        .map(GrantedAuthority::getAuthority)     // p.ej. ROLE_ADMIN
+        .collect(Collectors.toList());
+
+    // Roles cortos por si te sirven (ADMIN, SOCIO, etc.)
+    var rolesShort = authorities.stream()
+        .map(r -> r.replaceFirst("^ROLE_", ""))
+        .collect(Collectors.toList());
+
+    // Respuesta compatible + enriquecida
+    Map<String, Object> out = new LinkedHashMap<>();
+    out.put("name", dni);          // compatibilidad con lo que ya usabas
+    out.put("dni", dni);           // explícito
+    out.put("nombre", nombre);     // puede ser null
+    out.put("apellido", apellido); // puede ser null
+    out.put("roles", authorities); // ["ROLE_ADMIN", ...] (igual que antes)
+    out.put("rolesShort", rolesShort); // ["ADMIN", ...] (opcional)
+    return out;
   }
 
   @Data @NoArgsConstructor @AllArgsConstructor
