@@ -1,3 +1,4 @@
+
 package com.romacontrol.romacontrol_v1.model;
 
 import jakarta.persistence.Column;

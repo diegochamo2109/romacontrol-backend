@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -14,6 +15,7 @@ import com.romacontrol.romacontrol_v1.dto.UsuarioCreateRequest;
 import com.romacontrol.romacontrol_v1.dto.UsuarioDetailResponse;
 import com.romacontrol.romacontrol_v1.dto.UsuarioListItem;
 import com.romacontrol.romacontrol_v1.dto.UsuarioResponse;
+import com.romacontrol.romacontrol_v1.dto.UsuarioUpdateRequest; // 👈 agregado
 import com.romacontrol.romacontrol_v1.exception.ConflictException;
 import com.romacontrol.romacontrol_v1.exception.NotFoundException;
 import com.romacontrol.romacontrol_v1.model.ContactoUrgencia;
@@ -217,37 +219,149 @@ public class UsuarioService {
       creadorId = u.getCreadoPor().getId();
     }
 
-    return UsuarioDetailResponse.builder()
-        .id(u.getId())
-        .dni(u.getDni())
-        .activo(u.isActivo())
-        .fechaCreacion(u.getFechaCreacion())
-        .tipoCuotaId(u.getTipoCuota() != null ? u.getTipoCuota().getId() : null)
+return UsuarioDetailResponse.builder()
+    .id(u.getId())
+    .dni(u.getDni())
+    .activo(u.isActivo())
+    .fechaCreacion(u.getFechaCreacion())
 
-        .nombre(p != null ? p.getNombre() : null)
-        .apellido(p != null ? p.getApellido() : null)
-        .fechaNacimiento(p != null ? p.getFechaNacimiento() : null)
-        .domicilio(p != null ? p.getDomicilio() : null)
-        .telefonoArea(p != null ? p.getTelefonoArea() : null)
-        .telefonoNumero(p != null ? p.getTelefonoNumero() : null)
-        .email(p != null ? p.getEmail() : null)
-        .generoId(p != null && p.getGenero() != null ? p.getGenero().getId() : null)
-        .generoNombre(p != null && p.getGenero() != null ? p.getGenero().getNombre() : null)
-        .localidadId(p != null && p.getLocalidad() != null ? p.getLocalidad().getId() : null)
+    .tipoCuotaId(u.getTipoCuota() != null ? u.getTipoCuota().getId() : null)
+    .cuotaNombre(u.getTipoCuota() != null ? u.getTipoCuota().getNombre() : null)
 
-        .contactoNombre(contactoOpt.map(ContactoUrgencia::getNombre).orElse(null))
-        .contactoApellido(contactoOpt.map(ContactoUrgencia::getApellido).orElse(null))
-        .contactoTelefonoArea(contactoOpt.map(ContactoUrgencia::getTelefonoArea).orElse(null))
-        .contactoTelefonoNumero(contactoOpt.map(ContactoUrgencia::getTelefonoNumero).orElse(null))
-        .contactoRelacion(contactoOpt.map(ContactoUrgencia::getRelacion).orElse(null))
+    // Persona
+    .nombre(p != null ? p.getNombre() : null)
+    .apellido(p != null ? p.getApellido() : null)
+    .fechaNacimiento(p != null ? p.getFechaNacimiento() : null)
+    .domicilio(p != null ? p.getDomicilio() : null)
+    .telefonoArea(p != null ? p.getTelefonoArea() : null)
+    .telefonoNumero(p != null ? p.getTelefonoNumero() : null)
+    .email(p != null ? p.getEmail() : null)
+    .generoId(p != null && p.getGenero() != null ? p.getGenero().getId() : null)
+    .generoNombre(p != null && p.getGenero() != null ? p.getGenero().getNombre() : null)
+    
+    .localidadId(p != null && p.getLocalidad() != null ? p.getLocalidad().getId() : null)
+    .provinciaId(
+    p != null && p.getLocalidad() != null && p.getLocalidad().getProvincia() != null
+        ? p.getLocalidad().getProvincia().getId()
+        : null)
 
-        .rolIds(rolIds)
+.contactoLocalidadId(
+    contactoOpt.map(c -> c.getLocalidad() != null ? c.getLocalidad().getId() : null).orElse(null))
 
-        .creadoPorId(creadorId)
-        .creadoPorNombre(creadorNombre)
-        .creadoPorDni(creadorDni)
-        .build();
+.contactoProvinciaId(
+    contactoOpt.map(c -> c.getLocalidad() != null && c.getLocalidad().getProvincia() != null
+        ? c.getLocalidad().getProvincia().getId()
+        : null).orElse(null))
+
+
+    // Contacto de urgencia
+    .contactoNombre(contactoOpt.map(ContactoUrgencia::getNombre).orElse(null))
+    .contactoApellido(contactoOpt.map(ContactoUrgencia::getApellido).orElse(null))
+    .contactoTelefonoArea(contactoOpt.map(ContactoUrgencia::getTelefonoArea).orElse(null))
+    .contactoTelefonoNumero(contactoOpt.map(ContactoUrgencia::getTelefonoNumero).orElse(null))
+    .contactoRelacion(contactoOpt.map(ContactoUrgencia::getRelacion).orElse(null))
+
+    // Roles
+    .rolIds(rolIds)
+    .rolNombres(u.getRoles().stream()
+        .map(Rol::getDescripcion)
+        .collect(Collectors.toList()))
+
+    // Auditoría
+    .creadoPorId(creadorId)
+    .creadoPorNombre(creadorNombre)
+    .creadoPorDni(creadorDni)
+
+    .build();
   }
+
+  // ===========================
+  // EDITAR (PUT)
+  // ===========================
+  @Transactional
+  public UsuarioDetailResponse editar(Long id, UsuarioUpdateRequest req, Long editorId) { // 👈 agregado
+    // 1) Traer usuario
+    Usuario u = usuarioRepo.findById(id)
+        .orElseThrow(() -> new NotFoundException("Usuario no encontrado id=" + id));
+
+    // 2) Validar y setear Tipo de Cuota
+    var tipoCuota = tipoCuotaRepo.findById(req.getTipoCuotaId())
+        .orElseThrow(() -> new NotFoundException("Tipo de cuota no encontrado"));
+    u.setTipoCuota(tipoCuota);
+
+    // 3) Actualizar Persona (campos simples + refs)
+    var p = u.getPersona();
+    if (p == null) {
+      throw new NotFoundException("Persona asociada al usuario inexistente");
+    }
+    var per = req.getPersona();
+
+    p.setNombre(per.getNombre());
+    p.setApellido(per.getApellido());
+    p.setFechaNacimiento(per.getFechaNacimiento());
+    p.setDomicilio(per.getDomicilio());
+    p.setTelefonoArea(per.getTelefonoArea());
+    p.setTelefonoNumero(per.getTelefonoNumero());
+    p.setEmail(per.getEmail());
+
+    if (per.getGeneroId() != null) {
+      Genero genero = generoRepo.findById(per.getGeneroId())
+          .orElseThrow(() -> new NotFoundException("Género no encontrado"));
+      p.setGenero(genero);
+    }
+
+    if (per.getLocalidadId() != null) {
+      Localidad locPersona = localidadRepo.findById(per.getLocalidadId())
+          .orElseThrow(() -> new NotFoundException("Localidad (persona) no encontrada"));
+      p.setLocalidad(locPersona);
+    }
+
+    // 4) Actualizar/crear Contacto de Urgencia (regla: siempre debe existir uno)
+    var conReq = req.getContacto();
+    ContactoUrgencia contacto = contactoRepo.findFirstByPersonaIdOrderByIdDesc(p.getId())
+        .orElse(null);
+    if (contacto == null) {
+      contacto = new ContactoUrgencia();
+      contacto.setPersona(p);
+    }
+    contacto.setNombre(conReq.getNombre());
+    contacto.setApellido(conReq.getApellido());
+    contacto.setTelefonoArea(conReq.getTelefonoArea());
+    contacto.setTelefonoNumero(conReq.getTelefonoNumero());
+    contacto.setRelacion(conReq.getRelacion());
+    if (conReq.getLocalidadId() != null) {
+      Localidad locContacto = localidadRepo.findById(conReq.getLocalidadId())
+          .orElseThrow(() -> new NotFoundException("Localidad (contacto) no encontrada"));
+      contacto.setLocalidad(locContacto);
+    }
+    contactoRepo.save(contacto);
+
+    // 5) Reemplazar Roles (validando existencia)
+    List<Long> rolIds = req.getRolIds();
+    if (rolIds == null || rolIds.isEmpty()) {
+      u.setRoles(new HashSet<>()); // si enviás vacío, queda sin roles
+    } else {
+      List<Rol> encontrados = rolRepo.findAllById(rolIds);
+      if (encontrados.size() != rolIds.size()) {
+        throw new NotFoundException("Uno o más roles no existen");
+      }
+      u.setRoles(new HashSet<>(encontrados));
+    }
+
+    // 6) PIN opcional (solo si viene con 4 dígitos; Bean Validation ya controla el patrón)
+    if (req.getPin() != null && !req.getPin().isBlank()) {
+      u.setPin(passwordEncoder.encode(req.getPin()));
+    }
+
+    // 7) Auditoría básica (dejamos modificadoPor para el punto 5)
+    u.setFechaModificacion(OffsetDateTime.now());
+
+    // 8) Persistir (Persona se guarda por cascade ALL; contacto ya se guardó)
+    usuarioRepo.save(u);
+
+    // 9) Devolver detalle actualizado
+    return detalle(u.getId());
+  } // 👈 fin método editar
 
   // ===========================
   // helpers

@@ -9,6 +9,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;        // 👈 agregado
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -19,6 +20,7 @@ import com.romacontrol.romacontrol_v1.dto.UsuarioCreateRequest;
 import com.romacontrol.romacontrol_v1.dto.UsuarioDetailResponse;
 import com.romacontrol.romacontrol_v1.dto.UsuarioListItem;
 import com.romacontrol.romacontrol_v1.dto.UsuarioResponse;
+import com.romacontrol.romacontrol_v1.dto.UsuarioUpdateRequest; // 👈 agregado
 import com.romacontrol.romacontrol_v1.repository.UsuarioRepository;
 import com.romacontrol.romacontrol_v1.service.UsuarioService;
 
@@ -61,5 +63,32 @@ public class UsuarioController {
     return ResponseEntity
         .created(URI.create("/api/usuarios/" + resp.id()))
         .body(resp);
+  }
+
+  // ===========================
+  // PUT /api/usuarios/{id}
+  // Edición completa de usuario
+  // ===========================
+  @PutMapping(value = "/{id}", consumes = "application/json", produces = "application/json") // 👈 agregado
+  public ResponseEntity<UsuarioDetailResponse> editar(@PathVariable Long id,                         // 👈 agregado
+                                                      @Valid @RequestBody UsuarioUpdateRequest req,   // 👈 agregado
+                                                      Authentication auth) {                          // 👈 agregado
+    // Reuso el mismo esquema de autenticación que en POST/crear
+    if (auth == null) {
+      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No autenticado");
+    }
+
+    final String dniActual = auth.getName() == null ? "" : auth.getName().trim();
+
+    // Obtengo el id del usuario autenticado para auditoría/modificación
+    Long editorId = usuarioRepository.findIdByDni(dniActual)
+        .orElseThrow(() -> new ResponseStatusException(
+            HttpStatus.UNAUTHORIZED, "Usuario autenticado no encontrado: " + dniActual));
+
+    // Delego la lógica de negocio al service (actualiza persona, contacto, roles,
+    // tipo de cuota y PIN opcional; NO toca 'dni' ni 'activo')
+    UsuarioDetailResponse actualizado = usuarioService.editar(id, req, editorId); // 👈 agregado
+
+    return ResponseEntity.ok(actualizado); // 👈 agregado
   }
 }

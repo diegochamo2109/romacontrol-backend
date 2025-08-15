@@ -1,3 +1,5 @@
+
+
 package com.romacontrol.romacontrol_v1.dto;
 
 import java.time.LocalDate;
@@ -16,8 +18,11 @@ public class UsuarioDetailResponse {
   private boolean activo;
   private OffsetDateTime fechaCreacion;
   private Long tipoCuotaId;
+  private String cuotaNombre; // ✅ NUEVO campo para el nombre legible
 
-  // Persona
+
+
+  // Persona  
   private String nombre;
   private String apellido;
   private LocalDate fechaNacimiento;
@@ -36,8 +41,19 @@ public class UsuarioDetailResponse {
   private String contactoTelefonoNumero;
   private String contactoRelacion;
 
+  // Persona
+    private Long provinciaId;     // 👈 necesario para que el frontend cargue localidades
+    
+
+    // Contacto de urgencia
+    private Long contactoProvinciaId;     // 👈 nuevo
+    private Long contactoLocalidadId;     // 👈 nuevo
+
+
   // Roles
   private List<Long> rolIds;
+  private List<String> rolNombres;  // ✅ para mostrar roles como "ADMIN, PROFESOR"
+
 
   // Creador (si existe)
   private Long creadoPorId;

@@ -11,11 +11,7 @@ import com.romacontrol.romacontrol_v1.model.Usuario;
 
 public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
     @Query("select u.id from Usuario u where u.dni = :dni")
- 
 
-   
-
-    
     List<Usuario> findByActivoFalse();   // ✅ para filtrar inactivos también
 
   Optional<Usuario> findByDni(String dni);
