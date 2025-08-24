@@ -35,6 +35,12 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-validation</artifactId>
     </dependency>
+    <dependency>
+    <!-- Enviar correo -->
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-mail</artifactId>
+      </dependency>
+
 
     <!-- Seguridad (si no la usás aún, podés quitarla) -->
     <dependency>

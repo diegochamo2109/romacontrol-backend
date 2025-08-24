@@ -15,8 +15,8 @@ import com.romacontrol.romacontrol_v1.dto.UsuarioCreateRequest;
 import com.romacontrol.romacontrol_v1.dto.UsuarioDetailResponse;
 import com.romacontrol.romacontrol_v1.dto.UsuarioListItem;
 import com.romacontrol.romacontrol_v1.dto.UsuarioResponse;
-import com.romacontrol.romacontrol_v1.dto.UsuarioUpdateRequest; // 👈 agregado
-import com.romacontrol.romacontrol_v1.exception.ConflictException;
+import com.romacontrol.romacontrol_v1.dto.UsuarioUpdateRequest;
+import com.romacontrol.romacontrol_v1.exception.ConflictException; // 👈 agregado
 import com.romacontrol.romacontrol_v1.exception.NotFoundException;
 import com.romacontrol.romacontrol_v1.model.ContactoUrgencia;
 import com.romacontrol.romacontrol_v1.model.Genero;
@@ -47,7 +47,8 @@ public class UsuarioService {
   private final RolRepository rolRepo;
   private final TipoCuotaRepository tipoCuotaRepo;
   private final PasswordEncoder passwordEncoder;
-
+    // ⬇️ NUEVO
+  private final EmailService emailService;
   // ===========================
   // CREAR (tu versión intacta)
   // ===========================
@@ -128,6 +129,15 @@ public class UsuarioService {
         .build();
 
     contactoRepo.save(contacto);
+
+    
+      // ➜ Enviar email de bienvenida (NO rompe el alta si falla)
+  try {
+    String destinatario = saved.getPersona() != null ? saved.getPersona().getEmail() : null;
+    if (destinatario != null && !destinatario.isBlank()) {
+      emailService.enviarBienvenida(destinatario, dni, pinPlano); // @Async
+    }
+  } catch (Exception ignored) { }
 
     return new UsuarioResponse(
         saved.getId(),
