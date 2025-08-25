@@ -8,7 +8,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType; // 👈 agregado
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.CrossOrigin;   // 👈 agregado (CORS rápido local)
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping; // 👈 agregado
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;        // 👈 agregado
@@ -34,12 +36,12 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/usuarios")
 @RequiredArgsConstructor
+@CrossOrigin(origins = "http://localhost:5500", allowCredentials = "true") // 👈 agregado: CORS local (puedes moverlo a config global)
 public class UsuarioController {
 
   private final UsuarioService usuarioService;
   private final UsuarioRepository usuarioRepository;
 
-  
   @GetMapping(produces = "application/json")
   public List<UsuarioListItem> listar(@RequestParam(value = "activo", required = false) Boolean activo) {
     return usuarioService.listar(activo);
@@ -71,8 +73,7 @@ public class UsuarioController {
   }
 
   // ===========================
-  // NUEVO: POST multipart/form-data (payload JSON + fotoPerfil)
-  // Mantiene el endpoint JSON anterior, y agrega este para soportar imagen
+  // POST multipart/form-data (payload JSON + fotoPerfil)
   // ===========================
   @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
   public ResponseEntity<UsuarioResponse> crearConFoto(
@@ -89,16 +90,14 @@ public class UsuarioController {
         .orElseThrow(() -> new ResponseStatusException(
             HttpStatus.UNAUTHORIZED, "Usuario autenticado no encontrado: " + dniActual));
 
-    // 🔒 AGREGADO: Validación de imagen (formato + tamaño) ANTES de leer bytes
+    // 🔒 Validación de imagen (formato + tamaño) ANTES de leer bytes
     if (fotoPerfil != null && !fotoPerfil.isEmpty()) {
       String ct = fotoPerfil.getContentType();
       long size = fotoPerfil.getSize();
 
-      // formatos permitidos
       if (ct == null || !(ct.equals("image/jpeg") || ct.equals("image/png") || ct.equals("image/webp"))) {
         throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Formato no permitido. Use JPG, PNG o WebP.");
       }
-      // tamaño máximo: 2 MB
       if (size > 2 * 1024 * 1024) {
         throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La imagen no puede superar 2 MB.");
       }
@@ -106,7 +105,6 @@ public class UsuarioController {
 
     byte[] fotoBytes = (fotoPerfil != null && !fotoPerfil.isEmpty()) ? fotoPerfil.getBytes() : null;
 
-    // Llama a un método específico que incluye el manejo de foto en Persona (bytea)
     UsuarioResponse resp = usuarioService.crearConFoto(request, creadorId, fotoBytes);
 
     return ResponseEntity
@@ -127,27 +125,43 @@ public class UsuarioController {
   }
 
   // ===========================
-  // PUT /api/usuarios/{id}
-  // Edición completa de usuario
+  // PATCH /api/usuarios/{id}/activo?activo=true|false
+  // Cambia el estado lógico del usuario
+  // ===========================
+  @PatchMapping(value = "/{id}/activo", produces = "application/json") // 👈 agregado
+  public ResponseEntity<UsuarioDetailResponse> cambiarActivo(@PathVariable Long id,
+                                                             @RequestParam("activo") boolean activo,
+                                                             Authentication auth) {
+    if (auth == null) {
+      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No autenticado");
+    }
+
+    final String dniActual = auth.getName() == null ? "" : auth.getName().trim();
+    Long editorId = usuarioRepository.findIdByDni(dniActual)
+        .orElseThrow(() -> new ResponseStatusException(
+            HttpStatus.UNAUTHORIZED, "Usuario autenticado no encontrado: " + dniActual));
+
+    UsuarioDetailResponse actualizado = usuarioService.cambiarActivo(id, activo, editorId); // 👈 NUEVO
+    return ResponseEntity.ok(actualizado);
+  }
+
+  // ===========================
+  // PUT /api/usuarios/{id}  (edición completa)
   // ===========================
   @PutMapping(value = "/{id}", consumes = "application/json", produces = "application/json") // 👈 agregado
   public ResponseEntity<UsuarioDetailResponse> editar(@PathVariable Long id,                         // 👈 agregado
                                                       @Valid @RequestBody UsuarioUpdateRequest req,   // 👈 agregado
                                                       Authentication auth) {                          // 👈 agregado
-    // Reuso el mismo esquema de autenticación que en POST/crear
     if (auth == null) {
       throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No autenticado");
     }
 
     final String dniActual = auth.getName() == null ? "" : auth.getName().trim();
 
-    // Obtengo el id del usuario autenticado para auditoría/modificación
     Long editorId = usuarioRepository.findIdByDni(dniActual)
         .orElseThrow(() -> new ResponseStatusException(
             HttpStatus.UNAUTHORIZED, "Usuario autenticado no encontrado: " + dniActual));
 
-    // Delego la lógica de negocio al service (actualiza persona, contacto, roles,
-    // tipo de cuota y PIN opcional; NO toca 'dni' ni 'activo')
     UsuarioDetailResponse actualizado = usuarioService.editar(id, req, editorId); // 👈 agregado
 
     return ResponseEntity.ok(actualizado); // 👈 agregado

@@ -386,6 +386,21 @@ public class UsuarioService {
 
         .build();
   }
+  // ===========================
+// 🔹 NUEVO: cambiar activo (habilitar/deshabilitar)
+// ===========================
+@Transactional
+public UsuarioDetailResponse cambiarActivo(Long id, boolean activo, Long editorId) {
+  Usuario u = usuarioRepo.findById(id)
+      .orElseThrow(() -> new NotFoundException("Usuario no encontrado id=" + id));
+
+  u.setActivo(activo);
+  u.setFechaModificacion(OffsetDateTime.now());
+  // (opcional) u.setModificadoPor(usuarioRepo.getReferenceById(editorId));
+  usuarioRepo.save(u);
+
+  return detalle(u.getId());
+}
 
   // ===========================
   // EDITAR (PUT)
