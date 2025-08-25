@@ -1,8 +1,9 @@
-
-
 package com.romacontrol.romacontrol_v1.model;
 
 import java.time.LocalDate;
+
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -36,6 +37,12 @@ public class Persona {
   @Column(length=8) private String telefonoArea;
   @Column(length=20) private String telefonoNumero;
   @Email @Column(length=120) private String email;
+
+  // 🧩 Foto en Postgres (bytea) — forzado a binario (no OID)
+  @JdbcTypeCode(SqlTypes.BINARY)          // 👈 clave
+  @Column(name="foto_perfil")
+  private byte[] fotoPerfil;
+
   @ManyToOne @JoinColumn(name="genero_id", foreignKey=@ForeignKey(name="fk_persona_genero"))
   private Genero genero;
   @ManyToOne @JoinColumn(name="localidad_id", foreignKey=@ForeignKey(name="fk_persona_localidad"))

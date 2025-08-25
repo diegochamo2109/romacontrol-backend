@@ -47,8 +47,9 @@ public class UsuarioService {
   private final RolRepository rolRepo;
   private final TipoCuotaRepository tipoCuotaRepo;
   private final PasswordEncoder passwordEncoder;
-    // ⬇️ NUEVO
+  // ⬇️ NUEVO
   private final EmailService emailService;
+
   // ===========================
   // CREAR (tu versión intacta)
   // ===========================
@@ -130,14 +131,116 @@ public class UsuarioService {
 
     contactoRepo.save(contacto);
 
-    
-      // ➜ Enviar email de bienvenida (NO rompe el alta si falla)
-  try {
-    String destinatario = saved.getPersona() != null ? saved.getPersona().getEmail() : null;
-    if (destinatario != null && !destinatario.isBlank()) {
-      emailService.enviarBienvenida(destinatario, dni, pinPlano); // @Async
+    // ➜ Enviar email de bienvenida (NO rompe el alta si falla)
+    try {
+      String destinatario = saved.getPersona() != null ? saved.getPersona().getEmail() : null;
+      if (destinatario != null && !destinatario.isBlank()) {
+        emailService.enviarBienvenida(destinatario, dni, pinPlano); // @Async
+      }
+    } catch (Exception ignored) { }
+
+    return new UsuarioResponse(
+        saved.getId(),
+        saved.getDni(),
+        saved.getPersona().getNombre(),
+        saved.getPersona().getApellido()
+    );
+  }
+
+  // ===========================
+  // 🔹 NUEVO: CREAR con foto (para POST multipart/form-data)
+  // Acepta los mismos datos + byte[] de la imagen (puede ser null)
+  // ===========================
+  @Transactional
+  public UsuarioResponse crearConFoto(UsuarioCreateRequest req, Long creadoPorId, byte[] fotoBytes) { // 👇 AGREGADO
+    final String dni = req.dni().trim();
+    final String pinPlano = req.pin().trim();
+
+    if (usuarioRepo.existsByDni(dni)) {
+      throw new ConflictException("El DNI ya existe: " + dni);
     }
-  } catch (Exception ignored) { }
+
+    Genero genero = generoRepo.findById(req.persona().generoId())
+        .orElseThrow(() -> new NotFoundException("Género no encontrado"));
+
+    Localidad locPersona = localidadRepo.findById(req.persona().localidadId())
+        .orElseThrow(() -> new NotFoundException("Localidad (persona) no encontrada"));
+
+    Localidad locContacto = localidadRepo.findById(req.contacto().localidadId())
+        .orElseThrow(() -> new NotFoundException("Localidad (contacto) no encontrada"));
+
+    var tipoCuota = tipoCuotaRepo.findById(req.tipoCuotaId())
+        .orElseThrow(() -> new NotFoundException("Tipo de cuota no encontrado"));
+
+    Persona persona = Persona.builder()
+        .nombre(req.persona().nombre())
+        .apellido(req.persona().apellido())
+        .fechaNacimiento(req.persona().fechaNacimiento())
+        .domicilio(req.persona().domicilio())
+        .telefonoArea(req.persona().telefonoArea())
+        .telefonoNumero(req.persona().telefonoNumero())
+        .email(req.persona().email())
+        .genero(genero)
+        .localidad(locPersona)
+        .build();
+
+    // 👇 AGREGADO: setear foto si vino
+    if (fotoBytes != null && fotoBytes.length > 0) {
+      persona.setFotoPerfil(fotoBytes);
+    }
+
+    Set<Rol> roles = new HashSet<>();
+    List<Long> rolIds = req.rolIds();
+    if (rolIds != null && !rolIds.isEmpty()) {
+      List<Rol> encontrados = rolRepo.findAllById(rolIds);
+      if (encontrados.size() != rolIds.size()) {
+        throw new NotFoundException("Uno o más roles no existen");
+      }
+      roles.addAll(encontrados);
+    }
+
+    Usuario usuario = Usuario.builder()
+        .dni(dni)
+        .pin(passwordEncoder.encode(pinPlano))
+        .persona(persona)
+        .activo(true)
+        .tipoCuota(tipoCuota)
+        .fechaCreacion(OffsetDateTime.now())
+        .roles(roles)
+        .build();
+
+    estadoUsuarioRepo.findByNombre("ACTIVO").ifPresent(usuario::setEstadoUsuario);
+
+    if (creadoPorId != null) {
+      try {
+        var creadorRef = usuarioRepo.getReferenceById(creadoPorId);
+        usuario.setCreadoPor(creadorRef);
+      } catch (EntityNotFoundException ex) {
+        throw new NotFoundException("Usuario creador no existe (id=" + creadoPorId + ")");
+      }
+    }
+
+    Usuario saved = usuarioRepo.save(usuario);
+
+    ContactoUrgencia contacto = ContactoUrgencia.builder()
+        .nombre(req.contacto().nombre())
+        .apellido(req.contacto().apellido())
+        .telefonoArea(req.contacto().telefonoArea())
+        .telefonoNumero(req.contacto().telefonoNumero())
+        .relacion(req.contacto().relacion())
+        .localidad(locContacto)
+        .persona(saved.getPersona())
+        .build();
+
+    contactoRepo.save(contacto);
+
+    // ➜ Enviar email de bienvenida (NO rompe el alta si falla)
+    try {
+      String destinatario = saved.getPersona() != null ? saved.getPersona().getEmail() : null;
+      if (destinatario != null && !destinatario.isBlank()) {
+        emailService.enviarBienvenida(destinatario, dni, pinPlano); // @Async
+      }
+    } catch (Exception ignored) { }
 
     return new UsuarioResponse(
         saved.getId(),
@@ -229,60 +332,59 @@ public class UsuarioService {
       creadorId = u.getCreadoPor().getId();
     }
 
-return UsuarioDetailResponse.builder()
-    .id(u.getId())
-    .dni(u.getDni())
-    .activo(u.isActivo())
-    .fechaCreacion(u.getFechaCreacion())
+    return UsuarioDetailResponse.builder()
+        .id(u.getId())
+        .dni(u.getDni())
+        .activo(u.isActivo())
+        .fechaCreacion(u.getFechaCreacion())
 
-    .tipoCuotaId(u.getTipoCuota() != null ? u.getTipoCuota().getId() : null)
-    .cuotaNombre(u.getTipoCuota() != null ? u.getTipoCuota().getNombre() : null)
+        .tipoCuotaId(u.getTipoCuota() != null ? u.getTipoCuota().getId() : null)
+        .cuotaNombre(u.getTipoCuota() != null ? u.getTipoCuota().getNombre() : null)
 
-    // Persona
-    .nombre(p != null ? p.getNombre() : null)
-    .apellido(p != null ? p.getApellido() : null)
-    .fechaNacimiento(p != null ? p.getFechaNacimiento() : null)
-    .domicilio(p != null ? p.getDomicilio() : null)
-    .telefonoArea(p != null ? p.getTelefonoArea() : null)
-    .telefonoNumero(p != null ? p.getTelefonoNumero() : null)
-    .email(p != null ? p.getEmail() : null)
-    .generoId(p != null && p.getGenero() != null ? p.getGenero().getId() : null)
-    .generoNombre(p != null && p.getGenero() != null ? p.getGenero().getNombre() : null)
-    
-    .localidadId(p != null && p.getLocalidad() != null ? p.getLocalidad().getId() : null)
-    .provinciaId(
-    p != null && p.getLocalidad() != null && p.getLocalidad().getProvincia() != null
-        ? p.getLocalidad().getProvincia().getId()
-        : null)
+        // Persona
+        .nombre(p != null ? p.getNombre() : null)
+        .apellido(p != null ? p.getApellido() : null)
+        .fechaNacimiento(p != null ? p.getFechaNacimiento() : null)
+        .domicilio(p != null ? p.getDomicilio() : null)
+        .telefonoArea(p != null ? p.getTelefonoArea() : null)
+        .telefonoNumero(p != null ? p.getTelefonoNumero() : null)
+        .email(p != null ? p.getEmail() : null)
+        .generoId(p != null && p.getGenero() != null ? p.getGenero().getId() : null)
+        .generoNombre(p != null && p.getGenero() != null ? p.getGenero().getNombre() : null)
 
-.contactoLocalidadId(
-    contactoOpt.map(c -> c.getLocalidad() != null ? c.getLocalidad().getId() : null).orElse(null))
+        .localidadId(p != null && p.getLocalidad() != null ? p.getLocalidad().getId() : null)
+        .provinciaId(
+            p != null && p.getLocalidad() != null && p.getLocalidad().getProvincia() != null
+                ? p.getLocalidad().getProvincia().getId()
+                : null)
 
-.contactoProvinciaId(
-    contactoOpt.map(c -> c.getLocalidad() != null && c.getLocalidad().getProvincia() != null
-        ? c.getLocalidad().getProvincia().getId()
-        : null).orElse(null))
+        .contactoLocalidadId(
+            contactoOpt.map(c -> c.getLocalidad() != null ? c.getLocalidad().getId() : null).orElse(null))
 
+        .contactoProvinciaId(
+            contactoOpt.map(c -> c.getLocalidad() != null && c.getLocalidad().getProvincia() != null
+                ? c.getLocalidad().getProvincia().getId()
+                : null).orElse(null))
 
-    // Contacto de urgencia
-    .contactoNombre(contactoOpt.map(ContactoUrgencia::getNombre).orElse(null))
-    .contactoApellido(contactoOpt.map(ContactoUrgencia::getApellido).orElse(null))
-    .contactoTelefonoArea(contactoOpt.map(ContactoUrgencia::getTelefonoArea).orElse(null))
-    .contactoTelefonoNumero(contactoOpt.map(ContactoUrgencia::getTelefonoNumero).orElse(null))
-    .contactoRelacion(contactoOpt.map(ContactoUrgencia::getRelacion).orElse(null))
+        // Contacto de urgencia
+        .contactoNombre(contactoOpt.map(ContactoUrgencia::getNombre).orElse(null))
+        .contactoApellido(contactoOpt.map(ContactoUrgencia::getApellido).orElse(null))
+        .contactoTelefonoArea(contactoOpt.map(ContactoUrgencia::getTelefonoArea).orElse(null))
+        .contactoTelefonoNumero(contactoOpt.map(ContactoUrgencia::getTelefonoNumero).orElse(null))
+        .contactoRelacion(contactoOpt.map(ContactoUrgencia::getRelacion).orElse(null))
 
-    // Roles
-    .rolIds(rolIds)
-    .rolNombres(u.getRoles().stream()
-        .map(Rol::getDescripcion)
-        .collect(Collectors.toList()))
+        // Roles
+        .rolIds(rolIds)
+        .rolNombres(u.getRoles().stream()
+            .map(Rol::getDescripcion)
+            .collect(Collectors.toList()))
 
-    // Auditoría
-    .creadoPorId(creadorId)
-    .creadoPorNombre(creadorNombre)
-    .creadoPorDni(creadorDni)
+        // Auditoría
+        .creadoPorId(creadorId)
+        .creadoPorNombre(creadorNombre)
+        .creadoPorDni(creadorDni)
 
-    .build();
+        .build();
   }
 
   // ===========================
@@ -372,6 +474,20 @@ return UsuarioDetailResponse.builder()
     // 9) Devolver detalle actualizado
     return detalle(u.getId());
   } // 👈 fin método editar
+
+  // ===========================
+  // 🔹 NUEVO: Obtener foto para el GET /api/usuarios/{id}/foto
+  // ===========================
+  @Transactional(readOnly = true)
+  public byte[] obtenerFotoPerfil(Long usuarioId) { // 👇 AGREGADO
+    Usuario u = usuarioRepo.findById(usuarioId)
+        .orElseThrow(() -> new NotFoundException("Usuario no encontrado id=" + usuarioId));
+    var p = u.getPersona();
+    if (p == null || p.getFotoPerfil() == null || p.getFotoPerfil().length == 0) {
+      return null;
+    }
+    return p.getFotoPerfil();
+  }
 
   // ===========================
   // helpers
