@@ -1,3 +1,4 @@
+
 package com.romacontrol.romacontrol_v1.repository;
 
 import java.util.List;
@@ -20,6 +21,7 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
   Optional<Long> findIdByDni(@Param("dni") String dni);
 
   boolean existsByDni(String dni);
+  
 
   List<Usuario> findByActivoTrue();
 

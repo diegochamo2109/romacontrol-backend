@@ -42,6 +42,7 @@ public class UsuarioController {
   private final UsuarioService usuarioService;
   private final UsuarioRepository usuarioRepository;
 
+
   @GetMapping(produces = "application/json")
   public List<UsuarioListItem> listar(@RequestParam(value = "activo", required = false) Boolean activo) {
     return usuarioService.listar(activo);

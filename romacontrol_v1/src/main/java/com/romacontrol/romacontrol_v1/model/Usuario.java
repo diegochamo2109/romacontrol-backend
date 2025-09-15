@@ -16,6 +16,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import jakarta.validation.constraints.NotBlank;
@@ -95,4 +96,13 @@ public class Usuario {
 
   @Column(name = "fecha_modificacion")
   private OffsetDateTime fechaModificacion;
+    
+  @OneToMany(mappedBy = "usuario")
+private Set<UsuarioCuota> cuotasAsignadas;
+
+// Usuario.java
+@ManyToOne
+@JoinColumn(name = "cuota_id")
+private CuotaMensual cuotaAsignada;
+  
 }

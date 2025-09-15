@@ -61,7 +61,7 @@
       <scope>runtime</scope>
     </dependency>
 
-    <!-- Flyway (core + soporte PostgreSQL) - versiones gestionadas por Spring Boot -->
+    <!-- Flyway (core + soporte PostgreSQL) - versiones gestionadas por Spring Boot
     <dependency>
       <groupId>org.flywaydb</groupId>
       <artifactId>flyway-core</artifactId>
@@ -69,7 +69,7 @@
     <dependency>
       <groupId>org.flywaydb</groupId>
       <artifactId>flyway-database-postgresql</artifactId>
-    </dependency>
+    </dependency> -->
 
     <!-- Auditoría de entidades (opcional) -->
     <dependency>
