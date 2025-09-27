@@ -8,7 +8,7 @@ import jakarta.validation.constraints.NotNull;
 public record UsuarioCreateRequest(
     @NotBlank String dni,
     @NotBlank String pin,            // lo guardamos hasheado
-    @NotNull  Long tipoCuotaId,      // select “Tipo de Cuota” de la UI
+        @NotNull Long cuotaMensualId, 
     @NotNull  List<Long> rolIds,     // ids de roles tildados en la UI
     @NotNull  PersonaDTO persona,
     @NotNull  ContactoUrgenciaDTO contacto

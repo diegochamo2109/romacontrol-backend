@@ -20,7 +20,9 @@ public class UsuarioDetailResponse {
   private Long tipoCuotaId;
   private String cuotaNombre; // ✅ NUEVO campo para el nombre legible
 
-
+      // 👇 NUEVOS CAMPOS: relación con cuota mensual
+    private Long cuotaMensualId;
+    private String cuotaDescripcion;
 
   // Persona  
   private String nombre;

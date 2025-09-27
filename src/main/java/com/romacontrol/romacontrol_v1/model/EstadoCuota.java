@@ -20,4 +20,5 @@ import lombok.Setter;
 public class EstadoCuota {
   @Id @GeneratedValue(strategy=GenerationType.IDENTITY) private Long id;
   @NotBlank @Column(nullable=false, length=40) private String nombre;
+  private Boolean activa;
 }

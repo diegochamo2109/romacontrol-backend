@@ -39,6 +39,38 @@ public class AuthController {
   private final UsuarioRepository usuarioRepo; // <-- NUEVO
 
   @PostMapping("/login")
+public LoginResponse login(@RequestBody LoginRequest req,
+                           HttpServletRequest request,
+                           HttpServletResponse response) {
+  try {
+    // Autentica por DNI + PIN
+    Authentication auth = authManager.authenticate(
+        new UsernamePasswordAuthenticationToken(req.getDni(), req.getPin())
+    );
+
+    // Crea y fija el SecurityContext
+    SecurityContext context = SecurityContextHolder.createEmptyContext();
+    context.setAuthentication(auth);
+    SecurityContextHolder.setContext(context);
+
+    // Asegura que exista sesión => permite Set-Cookie JSESSIONID
+    request.getSession(true);
+
+    // Persiste el contexto en la sesión
+    securityContextRepository.saveContext(context, request, response);
+
+    return new LoginResponse(true, req.getDni());
+
+  } catch (org.springframework.security.authentication.BadCredentialsException e) {
+    // ⚠️ Credenciales incorrectas → devolvemos 401
+    throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Contraseña incorrecta");
+  } catch (Exception e) {
+    // ⚠️ Cualquier otro error inesperado → 500
+    throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error interno en login");
+  }
+}
+
+  /*@PostMapping("/login")
   public LoginResponse login(@RequestBody LoginRequest req,
                              HttpServletRequest request,
                              HttpServletResponse response) {
@@ -59,7 +91,7 @@ public class AuthController {
     securityContextRepository.saveContext(context, request, response);
 
     return new LoginResponse(true, req.getDni());
-  }
+  }*/
 
   @PostMapping("/logout")
   public void logout(HttpServletRequest request) {
