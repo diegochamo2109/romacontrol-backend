@@ -25,13 +25,16 @@
     import com.romacontrol.romacontrol_v1.model.Persona;
     import com.romacontrol.romacontrol_v1.model.Rol;
     import com.romacontrol.romacontrol_v1.model.Usuario;
-    import com.romacontrol.romacontrol_v1.repository.ContactoUrgenciaRepository;
+import com.romacontrol.romacontrol_v1.model.UsuarioCuota;
+import com.romacontrol.romacontrol_v1.model.UsuarioCuotaEstado;
+import com.romacontrol.romacontrol_v1.repository.ContactoUrgenciaRepository;
     import com.romacontrol.romacontrol_v1.repository.CuotaMensualRepository;
     import com.romacontrol.romacontrol_v1.repository.EstadoUsuarioRepository;
     import com.romacontrol.romacontrol_v1.repository.GeneroRepository;
     import com.romacontrol.romacontrol_v1.repository.LocalidadRepository;
     import com.romacontrol.romacontrol_v1.repository.RolRepository;
-    import com.romacontrol.romacontrol_v1.repository.UsuarioRepository;
+import com.romacontrol.romacontrol_v1.repository.UsuarioCuotaRepository;
+import com.romacontrol.romacontrol_v1.repository.UsuarioRepository;
 
     import jakarta.persistence.EntityNotFoundException;
     import lombok.RequiredArgsConstructor;
@@ -49,6 +52,7 @@
         private final PasswordEncoder passwordEncoder;
         private final EmailService emailService;
         private final CuotaMensualRepository cuotaMensualRepo;
+        private final UsuarioCuotaRepository usuarioCuotaRepo;
 
         // ===========================
         // CREAR usuario
@@ -139,98 +143,107 @@
             );
         }
 
-        // ===========================
-        // CREAR usuario con foto
-        // ===========================
-        @Transactional
-        public UsuarioResponse crearConFoto(UsuarioCreateRequest req, Long creadoPorId, byte[] fotoBytes) {
-            final String dni = req.dni().trim();
-            final String pinPlano = req.pin().trim();
+// ===========================
+// CREAR usuario con foto
+// ===========================
+@Transactional
+public UsuarioResponse crearConFoto(UsuarioCreateRequest req, Long creadoPorId, byte[] fotoBytes) {
+    final String dni = req.dni().trim();
+    final String pinPlano = req.pin().trim();
 
-            if (usuarioRepo.existsByDni(dni)) {
-                throw new ConflictException("El DNI ya existe: " + dni);
-            }
+    if (usuarioRepo.existsByDni(dni)) {
+        throw new ConflictException("El DNI ya existe: " + dni);
+    }
 
-            CuotaMensual cuota = cuotaMensualRepo.findById(req.cuotaMensualId())
-                    .orElseThrow(() -> new NotFoundException("Cuota mensual no encontrada"));
+    CuotaMensual cuota = cuotaMensualRepo.findById(req.cuotaMensualId())
+            .orElseThrow(() -> new NotFoundException("Cuota mensual no encontrada"));
 
-            Genero genero = generoRepo.findById(req.persona().generoId())
-                    .orElseThrow(() -> new NotFoundException("Género no encontrado"));
+    Genero genero = generoRepo.findById(req.persona().generoId())
+            .orElseThrow(() -> new NotFoundException("Género no encontrado"));
 
-            Localidad locPersona = localidadRepo.findById(req.persona().localidadId())
-                    .orElseThrow(() -> new NotFoundException("Localidad (persona) no encontrada"));
+    Localidad locPersona = localidadRepo.findById(req.persona().localidadId())
+            .orElseThrow(() -> new NotFoundException("Localidad (persona) no encontrada"));
 
-            Localidad locContacto = localidadRepo.findById(req.contacto().localidadId())
-                    .orElseThrow(() -> new NotFoundException("Localidad (contacto) no encontrada"));
+    Localidad locContacto = localidadRepo.findById(req.contacto().localidadId())
+            .orElseThrow(() -> new NotFoundException("Localidad (contacto) no encontrada"));
 
-            Persona persona = Persona.builder()
-                    .nombre(req.persona().nombre())
-                    .apellido(req.persona().apellido())
-                    .fechaNacimiento(req.persona().fechaNacimiento())
-                    .domicilio(req.persona().domicilio())
-                    .telefonoArea(req.persona().telefonoArea())
-                    .telefonoNumero(req.persona().telefonoNumero())
-                    .email(req.persona().email())
-                    .genero(genero)
-                    .localidad(locPersona)
-                    .build();
+    Persona persona = Persona.builder()
+            .nombre(req.persona().nombre())
+            .apellido(req.persona().apellido())
+            .fechaNacimiento(req.persona().fechaNacimiento())
+            .domicilio(req.persona().domicilio())
+            .telefonoArea(req.persona().telefonoArea())
+            .telefonoNumero(req.persona().telefonoNumero())
+            .email(req.persona().email())
+            .genero(genero)
+            .localidad(locPersona)
+            .build();
 
-            if (fotoBytes != null && fotoBytes.length > 0) {
-                persona.setFotoPerfil(fotoBytes);
-            }
+    if (fotoBytes != null && fotoBytes.length > 0) {
+        persona.setFotoPerfil(fotoBytes);
+    }
 
-            Set<Rol> roles = new HashSet<>(rolRepo.findAllById(req.rolIds()));
+    Set<Rol> roles = new HashSet<>(rolRepo.findAllById(req.rolIds()));
 
-            Usuario usuario = Usuario.builder()
-                    .dni(dni)
-                    .pin(passwordEncoder.encode(pinPlano))
-                    .persona(persona)
-                    .activo(true)
-                    .cuotaAsignada(cuota)
-                    .fechaCreacion(OffsetDateTime.now())
-                    .roles(roles)
-                    .build();
+    Usuario usuario = Usuario.builder()
+            .dni(dni)
+            .pin(passwordEncoder.encode(pinPlano))
+            .persona(persona)
+            .activo(true)
+            .cuotaAsignada(cuota)
+            .fechaCreacion(OffsetDateTime.now())
+            .roles(roles)
+            .build();
 
-            estadoUsuarioRepo.findByNombre("ACTIVO").ifPresent(usuario::setEstadoUsuario);
+    estadoUsuarioRepo.findByNombre("ACTIVO").ifPresent(usuario::setEstadoUsuario);
 
-            if (creadoPorId != null) {
-                try {
-                    var creadorRef = usuarioRepo.getReferenceById(creadoPorId);
-                    usuario.setCreadoPor(creadorRef);
-                } catch (EntityNotFoundException ex) {
-                    throw new NotFoundException("Usuario creador no existe (id=" + creadoPorId + ")");
-                }
-            }
-
-            Usuario saved = usuarioRepo.save(usuario);
-
-            ContactoUrgencia contacto = ContactoUrgencia.builder()
-                    .nombre(req.contacto().nombre())
-                    .apellido(req.contacto().apellido())
-                    .telefonoArea(req.contacto().telefonoArea())
-                    .telefonoNumero(req.contacto().telefonoNumero())
-                    .relacion(req.contacto().relacion())
-                    .localidad(locContacto)
-                    .persona(saved.getPersona())
-                    .build();
-
-            contactoRepo.save(contacto);
-
-            // 👉 Enviar email de bienvenida también aquí
-            try {
-                String destinatario = saved.getPersona() != null ? saved.getPersona().getEmail() : null;
-                if (destinatario != null && !destinatario.isBlank()) {
-                    emailService.enviarBienvenida(destinatario, dni, pinPlano);
-                }
-            } catch (Exception ignored) { }
-
-            return new UsuarioResponse(
-                    saved.getId(),
-                    saved.getDni(),
-                    saved.getPersona().getNombre(),
-                    saved.getPersona().getApellido()
-            );
+    if (creadoPorId != null) {
+        try {
+            var creadorRef = usuarioRepo.getReferenceById(creadoPorId);
+            usuario.setCreadoPor(creadorRef);
+        } catch (EntityNotFoundException ex) {
+            throw new NotFoundException("Usuario creador no existe (id=" + creadoPorId + ")");
         }
+    }
+
+    Usuario saved = usuarioRepo.save(usuario);
+
+    // 👇 Registrar contacto de urgencia
+    ContactoUrgencia contacto = ContactoUrgencia.builder()
+            .nombre(req.contacto().nombre())
+            .apellido(req.contacto().apellido())
+            .telefonoArea(req.contacto().telefonoArea())
+            .telefonoNumero(req.contacto().telefonoNumero())
+            .relacion(req.contacto().relacion())
+            .localidad(locContacto)
+            .persona(saved.getPersona())
+            .build();
+
+    contactoRepo.save(contacto);
+
+    // 👇 Crear registro en usuario_cuota
+    UsuarioCuota uc = new UsuarioCuota();
+    uc.setUsuario(saved);
+    uc.setCuota(cuota);
+    uc.setEstado(UsuarioCuotaEstado.PENDIENTE); // estado inicial
+    uc.setFechaAsignacion(OffsetDateTime.now());
+    usuarioCuotaRepo.save(uc);
+
+    // 👉 Enviar email de bienvenida también aquí
+    try {
+        String destinatario = saved.getPersona() != null ? saved.getPersona().getEmail() : null;
+        if (destinatario != null && !destinatario.isBlank()) {
+            emailService.enviarBienvenida(destinatario, dni, pinPlano);
+        }
+    } catch (Exception ignored) { }
+
+    return new UsuarioResponse(
+            saved.getId(),
+            saved.getDni(),
+            saved.getPersona().getNombre(),
+            saved.getPersona().getApellido()
+    );
+}
 
         // ===========================
         // LISTAR

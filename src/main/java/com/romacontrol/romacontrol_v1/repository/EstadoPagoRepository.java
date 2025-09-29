@@ -9,5 +9,5 @@ import com.romacontrol.romacontrol_v1.model.EstadoPago;
 
 @Repository
 public interface EstadoPagoRepository extends JpaRepository<EstadoPago, Long> {
-  Optional<EstadoPago> findByNombreIgnoreCase(String nombre);
+   Optional<EstadoPago> findByNombre(String nombre);
 }

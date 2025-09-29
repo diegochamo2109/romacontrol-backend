@@ -167,4 +167,13 @@ public class UsuarioController {
 
     return ResponseEntity.ok(actualizado); // 👈 agregado
   }
+      // ===========================
+    // GET /api/usuarios/dni/{dni} -> buscar usuario por DNI
+    // ===========================
+    @GetMapping(value = "/dni/{dni}", produces = "application/json")
+    public ResponseEntity<UsuarioDetailResponse> buscarPorDni(@PathVariable String dni) {
+        return usuarioRepository.findByDni(dni)
+            .map(usuario -> ResponseEntity.ok(usuarioService.detalle(usuario.getId())))
+            .orElse(ResponseEntity.notFound().build());
+    }
 }
