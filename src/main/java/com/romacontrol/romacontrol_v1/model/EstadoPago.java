@@ -14,10 +14,33 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-@Entity @Table(name="estado_pago",
-  uniqueConstraints=@UniqueConstraint(name="uk_estado_pago_nombre", columnNames="nombre"))
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+/**
+ * Entidad EstadoPago — define el estado actual de un pago (ej.: PENDIENTE, PAGADO, ANULADO).
+ */
+@Entity
+@Table(
+    name = "estado_pago",
+    uniqueConstraints = @UniqueConstraint(name = "uk_estado_pago_nombre", columnNames = "nombre")
+)
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class EstadoPago {
-  @Id @GeneratedValue(strategy=GenerationType.IDENTITY) private Long id;
-  @NotBlank @Column(nullable=false, length=30) private String nombre; // PENDIENTE/PAGADO/ANULADO
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @NotBlank
+    @Column(nullable = false, length = 30)
+    private String nombre;
+
+    // ============================
+    // 🔹 Relación inversa (opcional, si luego listás pagos por estado)
+    // ============================
+    // @OneToMany(mappedBy = "estado")
+    // @JsonIgnore
+    // private Set<Pago> pagos;
 }

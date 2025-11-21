@@ -61,4 +61,8 @@ public class UsuarioDetailResponse {
   private Long creadoPorId;
   private String creadoPorNombre;  // "Apellido, Nombre"
   private String creadoPorDni;
+
+  // 🧩 Agregá este nuevo campo
+    private String fotoPerfilBase64;
+
 }

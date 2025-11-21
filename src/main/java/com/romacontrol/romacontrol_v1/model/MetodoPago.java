@@ -1,5 +1,9 @@
 package com.romacontrol.romacontrol_v1.model;
 
+import java.time.LocalDateTime;
+
+import org.hibernate.annotations.CreationTimestamp;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -14,10 +18,45 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-@Entity @Table(name="metodo_pago",
-  uniqueConstraints=@UniqueConstraint(name="uk_metodo_pago_nombre", columnNames="nombre"))
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+/**
+ * Entidad MetodoPago — representa el medio o canal utilizado para abonar una cuota o servicio.
+ * Ejemplos: EFECTIVO, TRANSFERENCIA, TARJETA, MERCADO PAGO, etc.
+ */
+@Entity
+@Table(
+    name = "metodo_pago",
+    uniqueConstraints = @UniqueConstraint(name = "uk_metodo_pago_nombre", columnNames = "nombre")
+)
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class MetodoPago {
-  @Id @GeneratedValue(strategy=GenerationType.IDENTITY) private Long id;
-  @NotBlank @Column(nullable=false, length=60) private String nombre;
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @NotBlank
+    @Column(nullable = false, length = 60)
+    private String nombre;
+
+    @Column(length = 300)
+    private String descripcion;
+
+    @Builder.Default
+    @Column(nullable = false)
+    private boolean activo = true;
+
+    @CreationTimestamp
+    @Column(name = "fecha_creacion", updatable = false)
+    private LocalDateTime fechaCreacion;
+
+    // ============================
+    // 🔹 Relación inversa (opcional para listar pagos por método)
+    // ============================
+    // @OneToMany(mappedBy = "metodoPago")
+    // @JsonIgnore
+    // private Set<Pago> pagos;
 }

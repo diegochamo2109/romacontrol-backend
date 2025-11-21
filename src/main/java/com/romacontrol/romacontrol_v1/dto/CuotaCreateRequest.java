@@ -14,8 +14,12 @@ import lombok.NoArgsConstructor;
 
 /**
  * Payload para crear una nueva cuota mensual.
- * El estado y si queda activa o no se determinan en el service
- * según el flag 'asignar' que llega como @RequestParam.
+ * El estado (ACTIVA/INACTIVA) y si se asigna automáticamente
+ * a los usuarios activos se determinan en el Service,
+ * en base al flag 'asignar' recibido como @RequestParam en el Controller.
+ *
+ * 👉 El tipo de cuota no se envía más desde el front;
+ * siempre se fija automáticamente en "Mensual" dentro del Service.
  */
 @Data
 @Builder
@@ -31,9 +35,10 @@ public class CuotaCreateRequest {
   private BigDecimal importe;
 
   @NotNull(message = "La fecha de vencimiento es obligatoria")
-  @FutureOrPresent(message = "La fecha de vencimiento no puede ser pasada")
+  @FutureOrPresent(message = "Selecciona una fecha válida: no puede ser menor al día actual.")
+
   private LocalDate fechaVencimiento;
 
-  @NotNull(message = "El tipo de cuota es obligatorio")
-  private Long tipoCuotaId;
+    // 🔥 NUEVO
+  private boolean cuotaDelMes;
 }

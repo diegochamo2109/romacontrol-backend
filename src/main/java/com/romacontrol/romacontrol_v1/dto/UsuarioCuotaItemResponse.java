@@ -1,19 +1,30 @@
 package com.romacontrol.romacontrol_v1.dto;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/** Ítem liviano para la grilla de cuotas de un usuario. */
-@Data @Builder @NoArgsConstructor @AllArgsConstructor
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class UsuarioCuotaItemResponse {
-  private Long cuotaId;
-  private String descripcion;
-  private String estado;          // PENDIENTE / VENCIDA / PAGADA
-  private boolean conRetraso;
-  private String fechaLimiteIso;  // ISO-8601 para frontend
-  private BigDecimal importe;
+
+    private Long usuarioId;
+    private String dni;
+    private String nombreCompleto;
+
+    private Long cuotaId;
+    private String descripcionCuota;
+    private BigDecimal importe;
+    private String estado;            // PENDIENTE | PAGADA
+    private boolean conRetraso;
+
+    private OffsetDateTime fechaAsignacion;
+    private OffsetDateTime fechaCambioEstado; // cuándo pasó a PAGADA
+    private OffsetDateTime fechaLimite;       // límite de la cuota
 }

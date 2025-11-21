@@ -21,7 +21,7 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/api/usuarios")
 @RequiredArgsConstructor
 @Validated
-@CrossOrigin(origins = "http://localhost:5500", allowCredentials = "true") // 👈 agregado para el front
+@CrossOrigin(origins = "http://localhost:5500", allowCredentials = "true") // 👈 habilita tu front local
 public class UsuarioCuotaController {
 
   private final UsuarioCuotaQueryService usuarioCuotaQueryService;
@@ -29,9 +29,9 @@ public class UsuarioCuotaController {
   /**
    * Ejemplos:
    * GET /api/usuarios/33548166/cuotas
-   *    -> devuelve todas (PENDIENTE, VENCIDA, PAGADA)
+   *    -> devuelve todas (PENDIENTE, PAGADA) o las que el service maneje por defecto
    *
-   * GET /api/usuarios/33548166/cuotas?estado=PENDIENTE,VENCIDA
+   * GET /api/usuarios/33548166/cuotas?estado=PENDIENTE,PAGADA
    *    -> devuelve solo cuotas con esos estados
    */
   @GetMapping("/{dni}/cuotas")
@@ -39,8 +39,9 @@ public class UsuarioCuotaController {
       @PathVariable String dni,
       @RequestParam(required = false) String estado) {
 
+    // Si no mandan ?estado=... devolvemos todas (el service ya maneja default)
     List<String> estados = (estado == null || estado.isBlank())
-        ? List.of() // service toma todos por defecto
+        ? List.of()
         : Arrays.stream(estado.split(","))
                 .map(String::trim)
                 .map(String::toUpperCase) // 👈 asegura compatibilidad con enum

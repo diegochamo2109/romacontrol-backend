@@ -15,4 +15,5 @@ public interface EstadoCuotaRepository extends JpaRepository<EstadoCuota, Long> 
   List<EstadoCuota> findAllByOrderByNombreAsc();
   
 
+
 }

@@ -8,16 +8,37 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/** Respuesta al crear/listar cuota. */
-@Data @Builder @NoArgsConstructor @AllArgsConstructor
+/**
+ * DTO de salida para devolver la información de una cuota.
+ * Se utiliza tanto al crear una nueva cuota como al listarlas.
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class CuotaDetailResponse {
+
   private Long id;
+
   private String descripcion;
+
   private BigDecimal importe;
+
+  /** Fecha en que se dio de alta la cuota */
   private OffsetDateTime fechaAlta;
+
+  /** Fecha límite de pago de la cuota */
   private OffsetDateTime fechaLimite;
-  private String estado;     // nombre de EstadoCuota
-  private String tipo;       // nombre de TipoCuota
+
+  /** Estado actual de la cuota (nombre de EstadoCuota: ACTIVA / INACTIVA) */
+  private String estado;
+
+  /** Tipo de cuota (nombre de TipoCuota: Mensual, Semanal, etc.) */
+  private String tipo;
+
+  /** Indica si la cuota está marcada como activa */
   private boolean activa;
-  private int totalAsignadas; // cantidad de UsuarioCuota creadas (si corresponde)
+
+  /** Cantidad de usuarios a los que se les asignó esta cuota */
+  private int totalAsignadas;
 }

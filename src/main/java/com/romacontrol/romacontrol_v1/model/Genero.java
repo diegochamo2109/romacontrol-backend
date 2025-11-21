@@ -1,4 +1,3 @@
-
 package com.romacontrol.romacontrol_v1.model;
 
 import jakarta.persistence.Column;
@@ -15,10 +14,33 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-@Entity @Table(name="genero",
-  uniqueConstraints=@UniqueConstraint(name="uk_genero_nombre", columnNames="nombre"))
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+/**
+ * Entidad Genero — representa el género asociado a una persona (Masculino, Femenino, Otro, Prefiere no decirlo, etc.).
+ */
+@Entity
+@Table(
+    name = "genero",
+    uniqueConstraints = @UniqueConstraint(name = "uk_genero_nombre", columnNames = "nombre")
+)
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Genero {
-  @Id @GeneratedValue(strategy=GenerationType.IDENTITY) private Long id;
-  @NotBlank @Column(nullable=false, length=40) private String nombre;
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @NotBlank
+    @Column(nullable = false, length = 40)
+    private String nombre;
+
+    // ============================
+    // 🔹 Relación inversa (si luego querés listar personas por género)
+    // ============================
+    // @OneToMany(mappedBy = "genero")
+    // @JsonIgnore
+    // private Set<Persona> personas;
 }

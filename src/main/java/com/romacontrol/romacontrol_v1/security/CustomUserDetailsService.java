@@ -1,6 +1,6 @@
-// security/CustomUserDetailsService.java
 package com.romacontrol.romacontrol_v1.security;
 
+import java.util.List;
 import java.util.stream.Collectors;
 
 import org.springframework.security.core.GrantedAuthority;
@@ -20,25 +20,28 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class CustomUserDetailsService implements UserDetailsService {
 
-  private final UsuarioRepository usuarioRepo;
+    private final UsuarioRepository usuarioRepo;
 
-  @Override
-  public UserDetails loadUserByUsername(String dni) throws UsernameNotFoundException {
-    Usuario u = usuarioRepo.findByDni(dni)
-        .orElseThrow(() -> new UsernameNotFoundException("DNI no encontrado"));
+    @Override
+    public UserDetails loadUserByUsername(String dni) throws UsernameNotFoundException {
+        // 🔹 1. Buscar usuario por DNI
+        Usuario u = usuarioRepo.findByDni(dni)
+                .orElseThrow(() -> new UsernameNotFoundException("DNI no encontrado: " + dni));
 
-    var auths = u.getRoles() == null ? java.util.List.<GrantedAuthority>of()
-        : u.getRoles().stream()
-            .map(r -> new SimpleGrantedAuthority("ROLE_" + r.getNombre().toUpperCase()))
-            .collect(Collectors.toList());
+        // 🔹 2. Construir authorities (roles)
+        List<GrantedAuthority> authorities = (u.getRoles() == null)
+                ? List.of()
+                : u.getRoles().stream()
+                        .map(r -> new SimpleGrantedAuthority("ROLE_" + r.getNombre().toUpperCase()))
+                        .collect(Collectors.toList());
 
-    // El campo pin de DB puede venir con {noop}... o {bcrypt}...
-    return User.builder()
-        .username(u.getDni())
-        .password(u.getPin())
-        .authorities(auths)
-        .accountLocked(!u.isActivo())
-        .disabled(!u.isActivo())
-        .build();
-  }
+        // 🔹 3. Devolver el usuario con el PIN (ya encriptado con BCrypt)
+        return User.builder()
+                .username(u.getDni())
+                .password(u.getPin()) // debe contener el hash BCrypt
+                .authorities(authorities)
+                .accountLocked(!u.isActivo())
+                .disabled(!u.isActivo())
+                .build();
+    }
 }

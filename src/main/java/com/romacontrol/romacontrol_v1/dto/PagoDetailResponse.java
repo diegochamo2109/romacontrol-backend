@@ -20,4 +20,5 @@ public class PagoDetailResponse {
   private BigDecimal monto;
   private boolean fueraDeTermino;
   private String metodoPago;        // nombre del método
+  
 }

@@ -16,7 +16,7 @@ import com.romacontrol.romacontrol_v1.repository.EstadoCuotaRepository;
 import com.romacontrol.romacontrol_v1.repository.GeneroRepository;
 import com.romacontrol.romacontrol_v1.repository.LocalidadRepository;
 import com.romacontrol.romacontrol_v1.repository.ProvinciaRepository;
-import com.romacontrol.romacontrol_v1.repository.RolRepository;
+import com.romacontrol.romacontrol_v1.repository.rol.RolRepository;
 import com.romacontrol.romacontrol_v1.repository.TipoCuotaRepository;
 
 import lombok.RequiredArgsConstructor;

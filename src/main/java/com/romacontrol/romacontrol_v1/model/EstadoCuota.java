@@ -14,11 +14,37 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-@Entity @Table(name="estado_cuota",
-  uniqueConstraints=@UniqueConstraint(name="uk_estado_cuota_nombre", columnNames="nombre"))
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+/**
+ * Entidad EstadoCuota — representa el estado actual de una cuota mensual (por ejemplo: Pendiente, Pagada, Vencida).
+ */
+@Entity
+@Table(
+    name = "estado_cuota",
+    uniqueConstraints = @UniqueConstraint(name = "uk_estado_cuota_nombre", columnNames = "nombre")
+)
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class EstadoCuota {
-  @Id @GeneratedValue(strategy=GenerationType.IDENTITY) private Long id;
-  @NotBlank @Column(nullable=false, length=40) private String nombre;
-  private Boolean activa;
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @NotBlank
+    @Column(nullable = false, length = 40)
+    private String nombre;
+
+    @Builder.Default
+    @Column(nullable = false)
+    private Boolean activa = true;
+
+    // ============================
+    // 🔹 Relación inversa (si luego se desea listar cuotas por estado)
+    // ============================
+    // @OneToMany(mappedBy = "estadoCuota")
+    // @JsonIgnore
+    // private Set<CuotaMensual> cuotas;
 }

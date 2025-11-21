@@ -23,40 +23,52 @@ public class UsuarioUpdateRequest {
   @Pattern(regexp = "^[0-9]{4}$", message = "El PIN debe tener 4 dígitos")
   private String pin;
 
-  @NotNull
+  @NotNull(message = "Los datos personales son obligatorios")
   private PersonaDTO persona;
 
-  @NotNull
+  @NotNull(message = "Los datos de contacto de urgencia son obligatorios")
   private ContactoUrgenciaDTO contacto;
 
-  @NotNull
+  @NotNull(message = "Debe tener al menos un rol asignado")
   private List<Long> rolIds;
 
-
-
-  /** Ahora apunta a la cuota mensual creada, no al tipo */
-  @NotNull
-  private Long cuotaMensualId;
+  /** 
+   * Cuota mensual asociada.
+   * 🔹 NUEVO: ya no es @NotNull, porque ADMIN/PROFESOR pueden no tener cuota asignada.
+   * El Service valida este campo solo cuando el rol incluye 'SOCIO'.
+   */
+  private Long cuotaMensualId; // 🔹 NUEVO (antes tenía @NotNull)
 
   /** Permite activar/pausar desde edición (opcional) */
   private Boolean activo;
 
   // --------------- Sub-DTOs ---------------
+
   @Data
   @Builder
   @NoArgsConstructor
   @AllArgsConstructor
   public static class PersonaDTO {
-    @NotBlank private String nombre;
-    @NotBlank private String apellido;
-    @NotNull  private LocalDate fechaNacimiento;
+    @NotBlank(message = "El nombre es obligatorio") 
+    private String nombre;
 
-    @NotBlank private String domicilio;
+    @NotBlank(message = "El apellido es obligatorio") 
+    private String apellido;
 
-    @NotBlank private String telefonoArea;
-    @NotBlank private String telefonoNumero;
+    @NotNull(message = "La fecha de nacimiento es obligatoria")  
+    private LocalDate fechaNacimiento;
 
-    @Email private String email;
+    @NotBlank(message = "El domicilio es obligatorio") 
+    private String domicilio;
+
+    @NotBlank(message = "El código de área es obligatorio") 
+    private String telefonoArea;
+
+    @NotBlank(message = "El número de teléfono es obligatorio") 
+    private String telefonoNumero;
+
+    @Email(message = "Formato de correo electrónico inválido") 
+    private String email;
 
     private Long generoId;
     private Long localidadId;
@@ -67,11 +79,21 @@ public class UsuarioUpdateRequest {
   @NoArgsConstructor
   @AllArgsConstructor
   public static class ContactoUrgenciaDTO {
-    @NotBlank private String nombre;
-    @NotBlank private String apellido;
-    @NotBlank private String telefonoArea;
-    @NotBlank private String telefonoNumero;
-    @NotBlank private String relacion;
+    @NotBlank(message = "El nombre del contacto es obligatorio") 
+    private String nombre;
+
+    @NotBlank(message = "El apellido del contacto es obligatorio") 
+    private String apellido;
+
+    @NotBlank(message = "El código de área del contacto es obligatorio") 
+    private String telefonoArea;
+
+    @NotBlank(message = "El número del contacto es obligatorio") 
+    private String telefonoNumero;
+
+    @NotBlank(message = "Debe indicar la relación con el contacto") 
+    private String relacion;
+
     private Long localidadId;
   }
 }
