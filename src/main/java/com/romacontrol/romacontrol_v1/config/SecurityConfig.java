@@ -30,17 +30,11 @@ public class SecurityConfig {
 
   private final UserDetailsService userDetailsService;
 
-  // ===========================
-  // 🔐 Encoder
-  // ===========================
   @Bean
   public PasswordEncoder passwordEncoder() {
     return new BCryptPasswordEncoder(12);
   }
 
-  // ===========================
-  // 🔐 Provider
-  // ===========================
   @Bean
   public DaoAuthenticationProvider authenticationProvider() {
     DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
@@ -49,48 +43,36 @@ public class SecurityConfig {
     return provider;
   }
 
-  // ===========================
-  // 🔐 AuthenticationManager
-  // ===========================
   @Bean
   public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
     return config.getAuthenticationManager();
   }
 
-  // ===========================
-  // 🔐 SecurityContext (Sesión)
-  // ===========================
   @Bean
   public SecurityContextRepository securityContextRepository() {
     return new HttpSessionSecurityContextRepository();
   }
 
-  // ===========================
-  // 🔐 Cadena de filtros
-  // ===========================
+  // ============================================================
+  // 🔥 FILTER CHAIN
+  // ============================================================
   @Bean
   public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+
     http
+        .cors(cors -> cors.configurationSource(corsConfigurationSource()))   // << CORS ACTIVADO
         .csrf(AbstractHttpConfigurer::disable)
-        .cors(cors -> cors.configurationSource(corsConfigurationSource()))
         .authorizeHttpRequests(auth -> auth
-            // 1️⃣ Endpoints liberados
             .requestMatchers(
                 "/swagger-ui/**",
                 "/v3/api-docs/**",
                 "/actuator/**",
                 "/api/auth/login",
-                "/api/auth/logout"   // 🔥 agregado
+                "/api/auth/logout"
             ).permitAll()
-
-            // 2️⃣ Endpoints públicos del sistema
             .requestMatchers("/api/tipo-gasto/**", "/api/gastos/**").permitAll()
-
-            // 3️⃣ Permisos por rol
             .requestMatchers("/api/terminal/**").hasAnyRole("ADMIN", "PROFESOR")
             .requestMatchers("/api/asistencias/**").permitAll()
-
-            // 4️⃣ Todo lo demás requiere login (JSESSIONID)
             .anyRequest().authenticated()
         )
         .sessionManagement(sm ->
@@ -105,35 +87,39 @@ public class SecurityConfig {
     return http.build();
   }
 
-// ===========================
-// 🔐 CORS para el frontend
-// ===========================
-@Bean
-public CorsConfigurationSource corsConfigurationSource() {
-    CorsConfiguration config = new CorsConfiguration();
-    config.setAllowedOriginPatterns(Arrays.asList(
-        "http://127.0.0.1:5500",
-        "http://localhost:5500"
-    ));
-    config.setAllowedMethods(Arrays.asList(
-        "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"
-    ));
-    
-    // 🔥🔥 AGREGADO: permitir header 'dni'
-    config.setAllowedHeaders(Arrays.asList(
-        "Authorization",
-        "Content-Type",
-        "dni",
-        "X-Requested-With",
-        "Accept"
-    ));
+  // ============================================================
+  // 🔥 CORS CONFIG FINAL PARA NETLIFY + RENDER
+  // ============================================================
+  @Bean
+  public CorsConfigurationSource corsConfigurationSource() {
 
-    config.setAllowCredentials(true);
-    config.setMaxAge(3600L);
+      CorsConfiguration config = new CorsConfiguration();
 
-    UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-    source.registerCorsConfiguration("/**", config);
-    return source;
-}
+      config.setAllowedOrigins(Arrays.asList(
+          "http://127.0.0.1:5500",
+          "http://localhost:5500",
+          "https://voluble-kulfi-9c5ef1.netlify.app",               // << FRONTEND
+          "https://romacontrol-backend-n3p6.onrender.com"            // << BACKEND
+      ));
 
+      config.setAllowedMethods(Arrays.asList(
+          "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"
+      ));
+
+      config.setAllowedHeaders(Arrays.asList(
+          "Authorization",
+          "Content-Type",
+          "dni",
+          "X-Requested-With",
+          "Accept"
+      ));
+
+      config.setAllowCredentials(true);
+      config.setMaxAge(3600L);
+
+      UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+      source.registerCorsConfiguration("/**", config);
+
+      return source;
+  }
 }
